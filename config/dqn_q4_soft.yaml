@@ -1,0 +1,28 @@
+CartPole-v1:
+  gamma: 0.99
+  batch_size: 128
+  hidden_size: 128
+  hidden_size2: 128
+
+  replay_size: 1.0e+6
+  replay_size_start: 5000
+
+  epsilon_decay: 10000
+  epsilon_final: 0.001
+  epsilon_start: 0.250
+  learning_rate: 5.0e-4
+
+
+
+  target_net_sync: 1.0e+3
+
+  stopping_reward: 475
+  max_frames: 5.0e+5
+
+  save_path: saved_models/q4_soft
+  target_net_sync: 1000
+
+  tau: 0.005
+  alpha_sync: true
+
+  clip_gradient: false
