@@ -43,7 +43,7 @@ CartPole-v1:
   target_net_sync: 1.0e+3
 
   stopping_reward: 475
-  max_frames: 5.0e+5
+  max_frames: 2000000
 
   save_path: saved_models
 
