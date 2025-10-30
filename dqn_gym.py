@@ -8,6 +8,7 @@ import time
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
+import matplotlib.pyplot as plt
 
 from dqn_common import epsilon_by_frame, DqnNetSingleLayer, DqnNetTwoLayers, alpha_sync, DuellingDqn
 from lib.experience_buffer import ExperienceBuffer, Experience
@@ -80,6 +81,7 @@ optimizer = optim.Adam(net.parameters(), lr=params['learning_rate'])
 frame_idx = 0
 max_reward = -math.inf
 all_rewards = []
+r100_series_plot = []
 losses = []
 episode_reward = 0
 r100 = -math.inf
@@ -90,6 +92,30 @@ episode_no = 0
 visualizer_on = False
 
 state, _ = env.reset()
+
+def compute_r100_series(rewards, window: int = 100):
+   
+    out = []
+    for i in range(len(rewards)):
+        start = max(0, i - window + 1)
+        out.append(float(np.mean(rewards[start:i+1])))
+    return out
+
+def plot_rewards_and_r100(episode_rewards, r100_series, out_dir, env_name, net_name):
+    os.makedirs(out_dir, exist_ok=True)
+    x = list(range(1, len(episode_rewards) + 1))
+    plt.figure()
+    plt.plot(x, episode_rewards, label="Episode reward")
+    plt.plot(x, r100_series, label="R100 (moving avg)")
+    plt.xlabel("Episode")
+    plt.ylabel("Return")
+    plt.title(f"{env_name} – {net_name}")
+    plt.legend()
+    png_path = os.path.join(out_dir, f"{env_name}_{net_name}_rewards_r100.png")
+    pdf_path = os.path.join(out_dir, f"{env_name}_{net_name}_rewards_r100.pdf")
+    plt.savefig(png_path, bbox_inches="tight")
+    plt.savefig(pdf_path, bbox_inches="tight")
+    plt.close()
 
 def calculate_loss(net, target_net):
     states_v, actions_v, rewards_v, dones_v, next_states_v = buffer.sample(params['batch_size'])
@@ -160,6 +186,9 @@ while True:
         done_reward = episode_reward
         all_rewards.append(episode_reward)
         episode_no += 1
+        window = 100 if len(all_rewards) >= 100 else len(all_rewards)
+        r100_plot_val = float(np.mean(all_rewards[-window:])) if window > 0 else 0.0
+        r100_series_plot.append(r100_plot_val)
 
         state, _ = env.reset()
         if episode_reward > max_reward:
@@ -211,3 +240,16 @@ while True:
         break
 
 print(f"Completed training in {time.time() - start}")
+
+figs_dir = os.path.join(params['save_path'], 'figs')
+os.makedirs(figs_dir, exist_ok=True)
+
+np.save(os.path.join(figs_dir, f"{args.env}_{args.network}_episode_rewards.npy"),
+        np.array(all_rewards, dtype=np.float32))
+np.save(os.path.join(figs_dir, f"{args.env}_{args.network}_r100.npy"),
+        np.array(r100_series_plot, dtype=np.float32))
+
+if len(r100_series_plot) != len(all_rewards):
+    r100_series_plot = compute_r100_series(all_rewards, window=100)
+
+plot_rewards_and_r100(all_rewards, r100_series_plot, figs_dir, args.env, args.network)
